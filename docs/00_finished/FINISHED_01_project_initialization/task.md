@@ -17,9 +17,9 @@
 - [x] 開発環境の設定 <!-- id: 3 -->
     - [x] `.gitignore` の確認と更新
     - [x] Prettier / ESLint 設定
-- [ ] GitHub連携 <!-- id: 4 -->
-    - [ ] git init
-    - [ ] 初回コミット
-    - [ ] GitHub リポジトリ作成とプッシュ (gh cli使用)
-- [ ] 動作確認 <!-- id: 5 -->
-    - [ ] `pnpm run dev` で起動確認
+- [x] GitHub連携 <!-- id: 4 -->
+    - [x] git init
+    - [x] 初回コミット
+    - [x] GitHub リポジトリ作成とプッシュ (gh cli使用)
+- [x] 動作確認 <!-- id: 5 -->
+    - [x] `pnpm run dev` で起動確認 (Build verified)
