@@ -6,13 +6,16 @@ import { db } from '../db/schema';
 interface WeaveState {
   objects: Record<string, WorldObject>;
   selectedObjectIds: string[];
+  isDragging: boolean;
   
   // Actions
   setObjects: (objects: WorldObject[]) => void;
   addObject: (object: WorldObject) => void;
   updateObject: (id: string, updates: Partial<WorldObject>) => void;
+  persistObject: (id: string) => Promise<void>;
   removeObject: (id: string) => void;
   setSelectedObjectIds: (ids: string[]) => void;
+  setIsDragging: (isDragging: boolean) => void;
   
   // Sync
   loadFromDB: () => Promise<void>;
@@ -22,6 +25,7 @@ export const useStore = create<WeaveState>()(
   immer((set, get) => ({
     objects: {},
     selectedObjectIds: [],
+    isDragging: false,
 
     setObjects: (objects) => {
       set((state) => {
@@ -43,12 +47,16 @@ export const useStore = create<WeaveState>()(
     updateObject: (id, updates) => {
       set((state) => {
         if (state.objects[id]) {
-          const updated = { ...state.objects[id], ...updates, updatedAt: Date.now() };
-          state.objects[id] = updated;
-          // Async sync to DB
-          db.objects.put(updated).catch(console.error);
+          state.objects[id] = { ...state.objects[id], ...updates, updatedAt: Date.now() };
         }
       });
+    },
+
+    persistObject: async (id) => {
+      const obj = get().objects[id];
+      if (obj) {
+        await db.objects.put(obj).catch(console.error);
+      }
     },
 
     removeObject: (id) => {
@@ -62,6 +70,12 @@ export const useStore = create<WeaveState>()(
     setSelectedObjectIds: (ids) => {
       set((state) => {
         state.selectedObjectIds = ids;
+      });
+    },
+
+    setIsDragging: (isDragging) => {
+      set((state) => {
+        state.isDragging = isDragging;
       });
     },
 

@@ -83,6 +83,8 @@ function DotGrid() {
 }
 
 function Scene({ onMouseMove }: { onMouseMove: (pos: { x: number; y: number; z: number }) => void }) {
+  const isDragging = useStore((state) => state.isDragging);
+  
   return (
     <>
       <MouseTracker onUpdate={onMouseMove} />
@@ -94,12 +96,13 @@ function Scene({ onMouseMove }: { onMouseMove: (pos: { x: number; y: number; z: 
       
       <mesh>
         <sphereGeometry args={[0.1, 16, 16]} />
-        <meshStandardMaterial color="var(--weave-gold)" />
+        <meshStandardMaterial color="#c5a059" />
       </mesh>
 
       <MapControls
         enableRotate={false}
         screenSpacePanning={true}
+        enabled={!isDragging}
       />
     </>
   )
@@ -111,21 +114,44 @@ function App() {
   const addObject = useStore((state) => state.addObject)
 
   const handleDoubleClick = () => {
-    // ダブルクリックした位置に付箋を追加
+    const objects = useStore.getState().objects;
+    let targetX = mousePos.x;
+    let targetY = mousePos.y;
+    const S = 2.0; // Standard object width
+    const step = S / 4; // 0.5
+
+    // Find available cascade position
+    let found = false;
+    let attempts = 0;
+    while (!found && attempts < 20) {
+      const isOccupied = Object.values(objects).some(obj => 
+        Math.abs(obj.position.x - targetX) < 0.01 && 
+        Math.abs(obj.position.y - targetY) < 0.01
+      );
+      
+      if (isOccupied) {
+        targetX += step;
+        targetY -= step;
+        attempts++;
+      } else {
+        found = true;
+      }
+    }
+
     const id = crypto.randomUUID();
     const newObject: WorldObject = {
       id,
       type: 'sticky',
-      position: { ...mousePos },
+      position: { x: targetX, y: targetY, z: mousePos.z },
       rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 1, y: 1, z: 1 },
       style: {
-        fillColor: '#fef3c7', // Sticky yellow
+        fillColor: '#fef3c7',
         strokeColor: '#d97706',
         strokeWidth: 1,
         opacity: 1,
       },
-      content: '', // Empty text
+      content: '',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };

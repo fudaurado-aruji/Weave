@@ -20,15 +20,35 @@ export const ElementsPanel = ({ onClose }: ElementsPanelProps) => {
   const objects = useStore((state) => state.objects);
 
   const handleAddShape = (shapeType: ShapeType) => {
-    // 既存オブジェクトの数に基づいて位置をずらす (X+2, Y-2 ずつ)
-    const count = Object.keys(objects).length;
-    const offset = count * 2;
+    // 基準位置 (世界の中心)
+    let targetX = 0;
+    let targetY = 0;
+    const S = 2.0;
+    const step = S / 4; // 0.5
+
+    // 空いているカスケード位置を探すループ
+    let found = false;
+    let attempts = 0;
+    while (!found && attempts < 20) {
+      const isOccupied = Object.values(objects).some(obj => 
+        Math.abs(obj.position.x - targetX) < 0.01 && 
+        Math.abs(obj.position.y - targetY) < 0.01
+      );
+      
+      if (isOccupied) {
+        targetX += step;
+        targetY -= step;
+        attempts++;
+      } else {
+        found = true;
+      }
+    }
     
     const id = crypto.randomUUID();
     const newObject: WorldObject = {
       id,
       type: 'shape',
-      position: { x: offset % 20, y: -(offset % 20), z: 0 }, // 周期的に戻るように
+      position: { x: targetX, y: targetY, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 1, y: 1, z: 1 },
       style: {
