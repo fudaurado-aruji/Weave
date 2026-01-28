@@ -82,7 +82,7 @@ function DotGrid() {
   )
 }
 
-function Scene({ onMouseMove }: { onMouseMove: (pos: { x: number; y: number; z: number }) => void }) {
+function Scene({ onMouseMove, onBackgroundDoubleClick }: { onMouseMove: (pos: { x: number; y: number; z: number }) => void, onBackgroundDoubleClick: (pt: THREE.Vector3) => void }) {
   const isDragging = useStore((state) => state.isDragging);
   
   return (
@@ -91,6 +91,23 @@ function Scene({ onMouseMove }: { onMouseMove: (pos: { x: number; y: number; z: 
       <ambientLight intensity={0.8} />
       <pointLight position={[10, 10, 10]} intensity={1} />
       <DotGrid />
+
+      {/* Background Hit Area for adding objects */}
+      <mesh 
+        position={[0, 0, -0.05]} 
+        onPointerDown={(e) => {
+          if (e.button === 0) {
+            useStore.getState().setSelectedObjectIds([]);
+          }
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onBackgroundDoubleClick(e.point);
+        }}
+      >
+        <planeGeometry args={[1000, 1000]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
       
       <WorldObjects />
       
@@ -113,10 +130,10 @@ function App() {
   const [activeTab, setActiveTab] = useState<SidebarTabId | null>(null)
   const addObject = useStore((state) => state.addObject)
 
-  const handleDoubleClick = () => {
+  const handleAddSticky = (point: THREE.Vector3) => {
     const objects = useStore.getState().objects;
-    let targetX = mousePos.x;
-    let targetY = mousePos.y;
+    let targetX = point.x;
+    let targetY = point.y;
     const S = 2.0; // Standard object width
     const step = S / 4; // 0.5
 
@@ -142,7 +159,7 @@ function App() {
     const newObject: WorldObject = {
       id,
       type: 'sticky',
-      position: { x: targetX, y: targetY, z: mousePos.z },
+      position: { x: targetX, y: targetY, z: point.z },
       rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 1, y: 1, z: 1 },
       style: {
@@ -156,6 +173,8 @@ function App() {
       updatedAt: Date.now(),
     };
     addObject(newObject);
+    useStore.getState().setSelectedObjectIds([id]);
+    useStore.getState().setEditingObjectId(id);
   };
 
   const handlePointerMissed = () => {
@@ -164,10 +183,7 @@ function App() {
   };
 
   return (
-    <div 
-      className="w-full h-full relative overflow-hidden flex flex-row font-['Outfit']"
-      onDoubleClick={handleDoubleClick}
-    >
+    <div className="w-full h-full relative overflow-hidden flex flex-row font-['Outfit']">
       {/* Sidebar Layer */}
       <StudioSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -179,7 +195,7 @@ function App() {
           camera={{ position: [0, 0, 20], fov: 50 }}
           onPointerMissed={handlePointerMissed}
         >
-          <Scene onMouseMove={setMousePos} />
+          <Scene onMouseMove={setMousePos} onBackgroundDoubleClick={handleAddSticky} />
         </Canvas>
 
         {/* Floating Toolbars Layer */}

@@ -1,6 +1,12 @@
 export type ObjectType = 'shape' | 'text' | 'sticky' | 'connector';
 
-export type ShapeType = 'rectangle' | 'circle' | 'triangle' | 'diamond' | 'hexagon' | 'star';
+export type ShapeType =
+  | 'rectangle'
+  | 'circle'
+  | 'triangle'
+  | 'diamond'
+  | 'hexagon'
+  | 'star';
 
 export interface Vector3Obj {
   x: number;
@@ -15,8 +21,9 @@ export interface ObjectStyle {
   opacity?: number;
   borderRadius?: number;
   fontSize?: number;
-  textColor?: number;
+  textColor?: string;
   fontFamily?: string;
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 export interface WorldObject {
@@ -27,7 +34,10 @@ export interface WorldObject {
   scale: Vector3Obj;
   style: ObjectStyle;
   content?: string;
-  parentId?: string; // For grouping or hierarchy
+  parentId?: string;
+  isLocked?: boolean;     // Position and size lock
+  isPickable?: boolean;   // Click/Selection detection
+  isBBoxHidden?: boolean; // Hide selection border and handles
   createdAt: number;
   updatedAt: number;
 }
@@ -37,4 +47,9 @@ export interface ViewState {
   selectedObjectIds: string[];
 }
 
-export type SidebarTabId = "pages" | "elements" | "layouts" | "design" | "settings";
+export type SidebarTabId =
+  | 'pages'
+  | 'elements'
+  | 'layouts'
+  | 'design'
+  | 'settings';

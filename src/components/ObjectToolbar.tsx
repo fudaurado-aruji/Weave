@@ -4,7 +4,13 @@ import {
   Copy, 
   MoreHorizontal,
   ChevronDown,
-  Square
+  Square,
+  Type,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Plus,
+  Minus
 } from "lucide-react";
 
 import { useStore } from "../store/useStore";
@@ -12,8 +18,20 @@ import { useStore } from "../store/useStore";
 export const ObjectToolbar = () => {
   const selectedObjectIds = useStore((state) => state.selectedObjectIds);
   const removeObject = useStore((state) => state.removeObject);
+  const updateObject = useStore((state) => state.updateObject);
+  const firstObjectId = selectedObjectIds[0];
+  const firstObject = useStore((state) => state.objects[firstObjectId]);
 
   if (selectedObjectIds.length === 0) return null;
+
+  const handleUpdateStyle = (updates: any) => {
+    selectedObjectIds.forEach(id => {
+       const obj = useStore.getState().objects[id];
+       if (obj) {
+         updateObject(id, { style: { ...obj.style, ...updates } });
+       }
+    });
+  };
 
   const handleDelete = () => {
     selectedObjectIds.forEach((id) => {
@@ -70,6 +88,57 @@ export const ObjectToolbar = () => {
             <RotateCw className="w-3.5 h-3.5" />
           </button>
         </div>
+      </div>
+
+      <div className="w-px h-6 bg-[var(--weave-muted)]/20" />
+
+      {/* Text Settings */}
+      <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1">
+        <div className="flex items-center gap-0.5 px-2 mr-1">
+          <Type className="w-3.5 h-3.5 opacity-40 mr-1" />
+          <button 
+            onClick={() => {
+              const currentSize = firstObject?.style.fontSize || 0.2;
+              handleUpdateStyle({ fontSize: Math.max(0.05, currentSize - 0.05) });
+            }}
+            className="p-1 hover:bg-white rounded-md transition-all"
+          >
+            <Minus className="w-3 h-3" />
+          </button>
+          <span className="text-[10px] font-mono font-bold min-w-[24px] text-center">
+            {Math.round((firstObject?.style.fontSize || 0.2) * 100)}
+          </span>
+          <button 
+            onClick={() => {
+              const currentSize = firstObject?.style.fontSize || 0.2;
+              handleUpdateStyle({ fontSize: Math.min(2.0, currentSize + 0.05) });
+            }}
+            className="p-1 hover:bg-white rounded-md transition-all"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+
+        <div className="w-px h-4 bg-[var(--weave-muted)]/20 mx-1" />
+
+        <button 
+          onClick={() => handleUpdateStyle({ textAlign: 'left' })}
+          className={`p-1.5 rounded-md transition-all ${firstObject?.style.textAlign === 'left' ? 'bg-white shadow-sm text-[var(--weave-gold)]' : 'hover:bg-white text-[var(--weave-accent)] opacity-60'}`}
+        >
+          <AlignLeft className="w-3.5 h-3.5" />
+        </button>
+        <button 
+          onClick={() => handleUpdateStyle({ textAlign: 'center' })}
+          className={`p-1.5 rounded-md transition-all ${(!firstObject?.style.textAlign || firstObject?.style.textAlign === 'center') ? 'bg-white shadow-sm text-[var(--weave-gold)]' : 'hover:bg-white text-[var(--weave-accent)] opacity-60'}`}
+        >
+          <AlignCenter className="w-3.5 h-3.5" />
+        </button>
+        <button 
+          onClick={() => handleUpdateStyle({ textAlign: 'right' })}
+          className={`p-1.5 rounded-md transition-all ${firstObject?.style.textAlign === 'right' ? 'bg-white shadow-sm text-[var(--weave-gold)]' : 'hover:bg-white text-[var(--weave-accent)] opacity-60'}`}
+        >
+          <AlignRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       <div className="w-px h-6 bg-[var(--weave-muted)]/20" />

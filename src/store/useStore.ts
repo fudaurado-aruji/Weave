@@ -7,6 +7,7 @@ interface WeaveState {
   objects: Record<string, WorldObject>;
   selectedObjectIds: string[];
   isDragging: boolean;
+  editingObjectId: string | null;
   
   // Actions
   setObjects: (objects: WorldObject[]) => void;
@@ -15,6 +16,7 @@ interface WeaveState {
   persistObject: (id: string) => Promise<void>;
   removeObject: (id: string) => void;
   setSelectedObjectIds: (ids: string[]) => void;
+  setEditingObjectId: (id: string | null) => void;
   setIsDragging: (isDragging: boolean) => void;
   
   // Sync
@@ -26,6 +28,7 @@ export const useStore = create<WeaveState>()(
     objects: {},
     selectedObjectIds: [],
     isDragging: false,
+    editingObjectId: null,
 
     setObjects: (objects) => {
       set((state) => {
@@ -70,6 +73,12 @@ export const useStore = create<WeaveState>()(
     setSelectedObjectIds: (ids) => {
       set((state) => {
         state.selectedObjectIds = ids;
+      });
+    },
+
+    setEditingObjectId: (id) => {
+      set((state) => {
+        state.editingObjectId = id;
       });
     },
 

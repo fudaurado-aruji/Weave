@@ -3,7 +3,7 @@ import { useStore } from './store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { WorldObject } from './types'
 import * as THREE from 'three'
-import { Html } from '@react-three/drei'
+import { Html, Text } from '@react-three/drei'
 import { Copy, Trash2, MoreHorizontal } from 'lucide-react'
 
 export function WorldObjectRenderer({ id }: { id: string }) {
@@ -12,7 +12,9 @@ export function WorldObjectRenderer({ id }: { id: string }) {
 
   const groupRef = useRef<THREE.Group>(null);
   const isSelected = useStore((state) => state.selectedObjectIds.includes(id));
+  const isEditing = useStore((state) => state.editingObjectId === id);
   const setSelectedObjectIds = useStore((state) => state.setSelectedObjectIds);
+  const setEditingObjectId = useStore((state) => state.setEditingObjectId);
   const updateObject = useStore((state) => state.updateObject);
   const setIsDragging = useStore((state) => state.setIsDragging);
   const addObject = useStore((state) => state.addObject);
@@ -32,10 +34,15 @@ export function WorldObjectRenderer({ id }: { id: string }) {
   });
 
   const handlesRef = useRef<THREE.Group>(null);
+  const textGroupRef = useRef<THREE.Group>(null);
+  const textRef = useRef<any>(null);
 
   // 1. Start Dragging (Triggered by Object Body)
   const handleMoveStart = (e: any) => {
+    if (object.isPickable === false) return;
     e.stopPropagation();
+    if (object.isLocked) return;
+
     if (!isSelected) {
        setSelectedObjectIds([id]);
     }
@@ -51,8 +58,16 @@ export function WorldObjectRenderer({ id }: { id: string }) {
     e.target.setPointerCapture(e.pointerId);
   };
 
+  const handleDoubleClick = (e: any) => {
+    if (object.isPickable === false) return;
+    e.stopPropagation();
+    setEditingObjectId(id);
+    setSelectedObjectIds([id]);
+  };
+
   // 2. Start Resizing (Triggered by Handles)
   const handleResizeStart = (e: any, xDir: number, yDir: number, idx: number) => {
+    if (object.isLocked) return;
     e.stopPropagation();
     transformState.current.isResizing = true;
     transformState.current.isDragging = false;
@@ -149,6 +164,15 @@ export function WorldObjectRenderer({ id }: { id: string }) {
         handlesRef.current.children.forEach((handle: any) => {
           handle.scale.set(0.12 / newScaleX, 0.12 / newScaleY, 1);
         });
+      }
+
+      // 5. Counter-scale Text and update Wrapping during resize
+      if (textGroupRef.current) {
+        textGroupRef.current.scale.set(1 / newScaleX, 1 / newScaleY, 1);
+      }
+      if (textRef.current) {
+        textRef.current.maxWidth = newScaleX * 1.8;
+        if (textRef.current.sync) textRef.current.sync();
       }
     }
   };
@@ -253,15 +277,19 @@ export function WorldObjectRenderer({ id }: { id: string }) {
       {/* 1. Body Mesh (DRAG TARGET) */}
       <mesh 
         onPointerDown={handleMoveStart}
-        onPointerEnter={handlePointerEnter}
+        onDoubleClick={handleDoubleClick}
+        onPointerEnter={() => {
+          if (object.isPickable !== false && !object.isLocked) handlePointerEnter();
+        }}
         onPointerLeave={handlePointerLeave}
+        visible={!isEditing}
       >
         <primitive object={geometry} attach="geometry" />
         <meshStandardMaterial color={object.style.fillColor || '#ffffff'} transparent opacity={object.style.opacity ?? 1} side={THREE.DoubleSide} />
       </mesh>
 
       {/* 2. Bounding Box & Handles */}
-      {isSelected && (
+      {isSelected && !object.isBBoxHidden && (
         <group position={[0, 0, 0.01]}>
           <lineSegments>
             <edgesGeometry args={[new THREE.PlaneGeometry(2, 2.02)]} />
@@ -301,6 +329,60 @@ export function WorldObjectRenderer({ id }: { id: string }) {
               </mesh>
             ))}
           </group>
+        </group>
+      )}
+
+      {/* 2.5 Text Display (Only when NOT editing) */}
+      {!isEditing && object.content && (
+        <group ref={textGroupRef} scale={[1 / object.scale.x, 1 / object.scale.y, 1]}>
+          <Text
+            ref={textRef}
+            position={[0, 0, 0.02]}
+            fontSize={object.style.fontSize || 0.2}
+            color={object.style.textColor || "#333333"}
+            anchorX={(object.style.textAlign as any) || "center"}
+            anchorY="middle"
+            maxWidth={object.scale.x * 1.8} 
+            overflowWrap="break-word"
+            font={object.style.fontFamily}
+          >
+            {object.content}
+          </Text>
+        </group>
+      )}
+
+      {/* 2.6 Inline Editing UI */}
+      {isEditing && (
+        <group ref={textGroupRef} scale={[1 / object.scale.x, 1 / object.scale.y, 1]}>
+          <Html center distanceFactor={20} position={[0, 0, 0.1]}>
+            <textarea
+              autoFocus
+              className="bg-white/90 backdrop-blur-sm border-2 border-[var(--weave-gold)] rounded p-2 outline-none shadow-xl text-center resize-none overflow-hidden"
+              style={{
+                width: `${object.scale.x * 200}px`,
+                height: `${object.scale.y * 200}px`,
+                fontSize: `${(object.style.fontSize || 0.2) * 40}px`,
+                color: object.style.textColor || "#333333",
+                fontFamily: object.style.fontFamily || "inherit",
+              }}
+              defaultValue={object.content || ""}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+                if (e.key === 'Escape') {
+                  e.currentTarget.blur();
+                }
+              }}
+              onBlur={(e) => {
+                const newContent = e.target.value;
+                updateObject(id, { content: newContent });
+                useStore.getState().persistObject(id);
+                setEditingObjectId(null);
+              }}
+            />
+          </Html>
         </group>
       )}
 
