@@ -1,5 +1,5 @@
 import { Suspense, useMemo } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { WebGPURenderer } from 'three/webgpu'
 import { positionWorld, mod, length, smoothstep, uniform } from 'three/tsl'
 import * as THREE from 'three/webgpu'
@@ -8,8 +8,14 @@ import * as THREE from 'three/webgpu'
  * Weave V2: Infinite TSL Grid
  * WebGPU Native implementation of the core background.
  */
+import { CameraController } from './components/CameraController'
+import { useStore } from './store/useStore'
+
+/**
+ * Weave V2: Infinite TSL Grid
+ */
 function InfiniteGrid() {
-  const { gl } = useThree()
+  const mode = useStore((state) => state.mode)
   
   // Grid parameters via TSL Uniforms
   const uColorNode = useMemo(() => uniform(new THREE.Color('#cad1da')), [])
@@ -22,8 +28,11 @@ function InfiniteGrid() {
   const dist = length(grid);
   const alphaNode = smoothstep(uDotSizeNode, uDotSizeNode.mul(0.5), dist);
 
+  // Hide grid in Pure 3D Mode for cleaner horizon look
+  if (mode === '3D') return null;
+
   return (
-    <mesh position={[0, 0, -0.1]}>
+    <mesh position={[0, 0, -0.01]} rotation={[0, 0, 0]}>
       <planeGeometry args={[2000, 2000]} />
       <meshBasicMaterial 
         colorNode={uColorNode}
@@ -34,13 +43,33 @@ function InfiniteGrid() {
   )
 }
 
+function Horizon() {
+  const mode = useStore((state) => state.mode)
+  if (mode !== '3D') return null
+
+  return (
+    <group>
+      <gridHelper args={[1000, 100, 0xcccccc, 0xeeeeee]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, -0.1]} />
+      <mesh position={[0, 0, -1]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[2000, 2000]} />
+        <meshStandardMaterial color="#f8f9fa" roughness={1} />
+      </mesh>
+      <fog attach="fog" args={['#f8f9fa', 10, 100]} />
+    </group>
+  )
+}
+
 function Scene() {
   return (
     <>
-      <ambientLight intensity={1.0} />
-      <InfiniteGrid />
+      <CameraController />
+      <ambientLight intensity={1.5} />
+      <pointLight position={[10, 10, 10]} intensity={2} />
       
-      {/* Starting Object: A simple 3D glass cube to test PBR and WebGPU depth */}
+      <InfiniteGrid />
+      <Horizon />
+      
+      {/* Test Object */}
       <mesh position={[0, 0, 1]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshPhysicalMaterial 
@@ -55,14 +84,17 @@ function Scene() {
   )
 }
 
+
+import { StudioLayout } from './components/StudioLayout'
+
 export default function App() {
   return (
-    <div className="w-full h-full relative">
+    <StudioLayout>
       <Canvas
         flat
         shadows
         gl={async ({ canvas, ...props }) => {
-          const renderer = new WebGPURenderer({ canvas, ...props, antialias: true })
+          const renderer = new WebGPURenderer({ canvas, ...props, antialias: true } as any)
           await renderer.init()
           return renderer
         }}
@@ -78,22 +110,13 @@ export default function App() {
         </Suspense>
       </Canvas>
 
-      {/* Overlay UI */}
-      <div className="absolute top-8 left-8 pointer-events-none">
-        <h1 className="text-4xl font-black tracking-tighter uppercase text-[var(--weave-accent)]">
-          Weave <span className="text-[var(--weave-gold)]">V2</span>
-        </h1>
-        <p className="text-sm font-bold opacity-30 uppercase tracking-widest mt-2">
-          Spatial Middleware OS / WebGPU Native
-        </p>
-      </div>
-
-      <div className="absolute bottom-8 right-8 bg-white/80 backdrop-blur-xl border border-black/5 p-4 rounded-2xl shadow-2xl">
-        <div className="flex items-center gap-4">
-          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-xs font-black uppercase tracking-wider">WebGPU System Active</span>
+      {/* OS Status/Mode Indicator */}
+      <div className="absolute bottom-20 right-8 pointer-events-none z-30">
+        <div className="flex items-center gap-4 bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-black/5">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest opacity-50">WebGPU Native View</span>
         </div>
       </div>
-    </div>
+    </StudioLayout>
   )
 }
